@@ -758,8 +758,15 @@ namespace System.Management.Automation
             ArgumentNullException.ThrowIfNull(moduleNameOrPath);
             ArgumentNullException.ThrowIfNull(relativeTo);
 
-            if (!IsModuleNamePath(moduleNameOrPath))
+            // A module name may contain dot-separated path components, as in My.Module. If the last component
+            // if a PowerShell module extension, i.e. 'foo.psm1', we treat it as a path.
+            //
+            // However, if the last component is intended to be a PowerShell module extension but is misspelled,
+            // we still treat it as a module name and never display an error to the user. This is a limitation.
+            if (!(IsModuleNamePath(moduleNameOrPath) || IsPowerShellModuleExtension(Path.GetExtension(moduleNameOrPath))))
             {
+                // IMPORTANT: Will return foo.psm1x as a module name, even though it looks like the user meant foo.psm1.
+                //            We can't anticipate all invalid extensions.
                 return moduleNameOrPath;
             }
 

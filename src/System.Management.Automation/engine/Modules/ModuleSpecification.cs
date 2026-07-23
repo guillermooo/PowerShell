@@ -4,6 +4,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Management.Automation;
 using System.Management.Automation.Internal;
 using System.Management.Automation.Language;
@@ -298,7 +299,7 @@ namespace Microsoft.PowerShell.Commands
         internal ModuleSpecification WithNormalizedName(ExecutionContext context, string basePath)
         {
             // Save allocating a new module spec if we don't need to change anything
-            if (!ModuleIntrinsics.IsModuleNamePath(Name))
+            if (!(ModuleIntrinsics.IsModuleNamePath(Name) || ModuleIntrinsics.IsPowerShellModuleExtension(Path.GetExtension(Name))))
             {
                 return this;
             }
