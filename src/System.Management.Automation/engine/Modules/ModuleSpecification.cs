@@ -299,7 +299,7 @@ namespace Microsoft.PowerShell.Commands
         internal ModuleSpecification WithNormalizedName(ExecutionContext context, string basePath)
         {
             // Save allocating a new module spec if we don't need to change anything
-            if (!(ModuleIntrinsics.IsModuleNamePath(Name) || ModuleIntrinsics.IsPowerShellModuleExtension(Path.GetExtension(Name))))
+            if (!ModuleIntrinsics.IsModuleNamePath(Name))
             {
                 return this;
             }

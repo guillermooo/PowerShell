@@ -758,12 +758,7 @@ namespace System.Management.Automation
             ArgumentNullException.ThrowIfNull(moduleNameOrPath);
             ArgumentNullException.ThrowIfNull(relativeTo);
 
-            // A module name may contain dot-separated path components, as in My.Module. If the last component
-            // if a PowerShell module extension, i.e. 'foo.psm1', we treat it as a path.
-            //
-            // However, if the last component is intended to be a PowerShell module extension but is misspelled,
-            // we still treat it as a module name and never display an error to the user. This is a limitation.
-            if (!(IsModuleNamePath(moduleNameOrPath) || IsPowerShellModuleExtension(Path.GetExtension(moduleNameOrPath))))
+            if (!IsModuleNamePath(moduleNameOrPath))
             {
                 // IMPORTANT: Will return foo.psm1x as a module name, even though it looks like the user meant foo.psm1.
                 //            We can't anticipate all invalid extensions.
@@ -796,16 +791,31 @@ namespace System.Management.Automation
         }
 
         /// <summary>
-        /// Check if a given module name is a path to a module rather than a simple name.
+        /// Determines whether <paramref name="moduleName"/> is a path or a simple module name.
         /// </summary>
+        /// <remarks>
+        ///     <para><strong>Edge cases</strong></para>
+        ///     <list type="bullet">
+        ///         <item><c>foo.psm1</c> is a path</item>
+        ///         <item><c>foo.psmx</c> is a simple module name (unknown extension)</item>
+        ///     </list>
+        ///     <para>This edge case applies to all PowerShell module extensions as defined by <see cref="ModuleIntrinsics.IsPowerShellModuleExtension"/>.</para>
+        /// </remarks>
         /// <param name="moduleName">The module name to check.</param>
-        /// <returns>True if the module name is a path, false otherwise.</returns>
+        /// <returns><see langword="true"/> if <paramref name="moduleName"/> is a path, otherwise <see langword="false"/>.</returns>
         internal static bool IsModuleNamePath(string moduleName)
         {
             return moduleName.Contains(StringLiterals.DefaultPathSeparator)
                 || moduleName.Contains(StringLiterals.AlternatePathSeparator)
                 || moduleName.Equals("..")
-                || moduleName.Equals(".");
+                || moduleName.Equals(".")
+                // A module name may contain dot-separated path components, as in My.Module. If the last component
+                // is a PowerShell module extension, i.e. 'foo.psm1', we treat it as a path.
+                //
+                // However, if the last component is intended to be a PowerShell module extension but is misspelled,
+                // we still treat it as a module name. This is a limitation, because we can't anticipate all invalid
+                // extensions.
+                || IsPowerShellModuleExtension(Path.GetExtension(moduleName));
         }
 
         internal static Version GetManifestModuleVersion(string manifestPath)
