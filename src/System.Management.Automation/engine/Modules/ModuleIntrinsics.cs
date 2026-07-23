@@ -773,10 +773,15 @@ namespace System.Management.Automation
             }
             else if (Path.IsPathRooted(moduleNameOrPath))
             {
+                // May return paths that don't exist.
                 return Path.GetFullPath(moduleNameOrPath);
             }
             else
             {
+                // FIXME: May return unexpanded ~\foo.ext paths if they don't exist. We should return
+                //        the expanded path instead.
+                //
+                // May return paths that don't exist.
                 return Path.GetFullPath(Path.Join(relativeTo, moduleNameOrPath));
             }
         }
