@@ -763,11 +763,8 @@ namespace System.Management.Automation
                 return moduleNameOrPath;
             }
 
-            // Ensure OS default directory separators because
-            //      - Path.IsPathRooted("\some\path") returns false on *nix, and
-            //      - Path.IsPathRooted("/some/path") return false on Windows.
+            // Ensure uniform handling in path APIs.
             moduleNameOrPath = PathHandling.NormalizeDirectorySeparators(moduleNameOrPath);
-
             string normalizedPath = ModuleCmdletBase.ResolveToSingleFileSystemPath(moduleNameOrPath, executionContext)?.TrimEnd(StringLiterals.DefaultPathSeparator);
 
             if (normalizedPath != null)
