@@ -765,11 +765,11 @@ namespace System.Management.Automation
 
             // Ensure uniform handling in path APIs.
             moduleNameOrPath = PathHandling.NormalizeDirectorySeparators(moduleNameOrPath);
-            string normalizedPath = ModuleCmdletBase.ResolveToSingleFileSystemPath(moduleNameOrPath, executionContext)?.TrimEnd(StringLiterals.DefaultPathSeparator);
+            string resolvedPath = ModuleCmdletBase.ResolveToSingleFileSystemPath(moduleNameOrPath, executionContext)?.TrimEnd(StringLiterals.DefaultPathSeparator);
 
-            if (normalizedPath != null)
+            if (resolvedPath != null)
             {
-                return normalizedPath;
+                return resolvedPath;
             }
             else if (Path.IsPathRooted(moduleNameOrPath))
             {
