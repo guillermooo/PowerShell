@@ -731,11 +731,11 @@ namespace System.Management.Automation
         ///     <para>
         ///         A normalized module name is either:
         ///         <list type="bullet">
-        ///             <item>A simple module name if <paramref name="moduleNameOrPath"/> was a simple name.</item>
-        ///             <item>A fully qualified, PowerShell-resolved path.</item>
+        ///             <item>A module name if <paramref name="moduleNameOrPath"/> was a simple name.</item>
+        ///             <item>A fully qualified, PowerShell-resolved file system path.</item>
         ///             <item>
-        ///                 A fully qualified path by combination of <paramref name="relativeTo"/> and
-        ///                 <paramref name="moduleNameOrPath"/> if PowerShell could not resolve the path.
+        ///                 A fully qualified file system path by combination of <paramref name="relativeTo"/>
+        ///                 and <paramref name="moduleNameOrPath"/> if PowerShell could not resolve the path.
         ///             </item>
         ///         </list>
         ///     </para>
@@ -750,8 +750,8 @@ namespace System.Management.Automation
         /// <param name="relativeTo">The path to base relative paths off.</param>
         /// <param name="executionContext">The current execution context.</param>
         /// <returns>
-        /// A simple module name if <paramref name="moduleNameOrPath"/> was a simple module
-        /// name, otherwise a fully qualified path to the module.
+        /// A module name if <paramref name="moduleNameOrPath"/> was a simple module name,
+        /// otherwise a fully qualified file system path. The path is not guaranteed to exist.
         /// </returns>
         internal static string NormalizeModuleName(string moduleNameOrPath, string relativeTo, ExecutionContext executionContext)
         {
