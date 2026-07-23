@@ -1045,13 +1045,20 @@ namespace Microsoft.PowerShell.Commands
                         // If the given path is a valid module file, we will load the specific file
                         if (!Directory.Exists(resolvedModulePath) && ModuleIntrinsics.IsPowerShellModuleExtension(Path.GetExtension(moduleName)))
                         {
-                            PSModuleInfo module = CreateModuleInfoForGetModule(resolvedModulePath, refresh);
-                            if (module != null)
+                            if (File.Exists(resolvedModulePath))
                             {
-                                if (modules.Add(resolvedModulePath))
+                                PSModuleInfo module = CreateModuleInfoForGetModule(resolvedModulePath, refresh);
+                                if (module != null)
                                 {
-                                    yield return module;
+                                    if (modules.Add(resolvedModulePath))
+                                    {
+                                        yield return module;
+                                    }
                                 }
+                            }
+                            else if (!containsWildCards)
+                            {
+                                WriteError(CreateModuleNotFoundError(resolvedModulePath));
                             }
                         }
                         else
