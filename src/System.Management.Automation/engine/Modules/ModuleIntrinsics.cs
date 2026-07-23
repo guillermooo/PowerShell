@@ -765,6 +765,7 @@ namespace System.Management.Automation
 
             // Ensure uniform handling in path APIs.
             moduleNameOrPath = PathHandling.NormalizeDirectorySeparators(moduleNameOrPath);
+            // We need a non-null module name/path, so we resolve paths even if they don't exist.
             string resolvedPath = ModuleCmdletBase.ResolveToSingleFileSystemPath(
                     moduleNameOrPath,
                     executionContext,
@@ -782,9 +783,6 @@ namespace System.Management.Automation
             }
             else
             {
-                // FIXME: May return unexpanded ~\foo.ext paths if they don't exist. We should return
-                //        the expanded path instead.
-                //
                 // May return paths that don't exist.
                 return Path.GetFullPath(Path.Join(relativeTo, moduleNameOrPath));
             }
