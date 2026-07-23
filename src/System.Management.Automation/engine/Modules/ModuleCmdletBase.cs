@@ -4808,12 +4808,13 @@ namespace Microsoft.PowerShell.Commands
         /// </remarks>
         /// <param name="path">The file path to resolve.</param>
         /// <param name="context">The execution context.</param>
+        /// <param name="allowNonExistingPaths">Whether to allow resolving non-existing paths.</param>
         /// <returns>The resolved, fully qualified file system path if resolution succeeded; otherwise <see langword="null"/>.</returns>
-        internal static string ResolveToSingleFileSystemPath(string path, ExecutionContext context)
+        internal static string ResolveToSingleFileSystemPath(string path, ExecutionContext context, bool allowNonExistingPaths = false)
         {
             Collection<string> paths = null;
 
-            if (!TryResolveToFileSystemPaths(path, context, out paths, allowNonExistingPaths: true))
+            if (!TryResolveToFileSystemPaths(path, context, out paths, allowNonExistingPaths))
             {
                 // Ported from legacy code to preserve behavior.
                 if (context?.EngineSessionState?.IsProviderLoaded(context.ProviderNames.FileSystem) != true)
@@ -5493,7 +5494,7 @@ namespace Microsoft.PowerShell.Commands
                 string fileName = fileBaseName + ext;
 
                 // Get the resolved file name
-                fileName = ResolveToSingleFileSystemPath(fileName, Context);
+                fileName = ResolveToSingleFileSystemPath(fileName, Context, allowNonExistingPaths: true);
 
                 if (fileName == null)
                     continue;
