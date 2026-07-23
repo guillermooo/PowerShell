@@ -994,7 +994,7 @@ namespace Microsoft.PowerShell.Commands
             {
                 foreach (var n in names)
                 {
-                    if (n.Contains(StringLiterals.DefaultPathSeparator) || n.Contains(StringLiterals.AlternatePathSeparator))
+                    if (ModuleIntrinsics.IsModuleNamePath(n))
                     {
                         modulePaths.Add(n);
                     }
