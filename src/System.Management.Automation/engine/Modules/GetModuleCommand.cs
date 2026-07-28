@@ -422,6 +422,56 @@ namespace Microsoft.PowerShell.Commands
             }
         }
 
+        /// <summary>
+        /// Builds a <see cref="NameArgument"/> for each item in <c>-Name</c> or <c>-FullyQualifiedName</c>.
+        /// </summary>
+        private IReadOnlyCollection<NameArgument> BuildNameArguments()
+        {
+            Dbg.Assert(!(Name == null && FullyQualifiedName == null), "Caller must ensure object state.");
+
+            var arguments = new List<NameArgument>(capacity: Name?.Length ?? FullyQualifiedName.Length);
+            var parameterName = Name != null ? nameof(Name) : nameof(FullyQualifiedName);
+            // Unify input data to module specification before proceeding.
+            IEnumerable<ModuleSpecification> moduleNamesOrPaths = Name?.Select(name => new ModuleSpecification(name)) ?? FullyQualifiedName;
+
+            foreach (ModuleSpecification nameOrPath in moduleNamesOrPaths)
+            {
+                // The old implementation and documentation seem wrong and both -Name and -FullyQualifiedName
+                // can contain either a module name or a path to a module file. We keep the same behavior.
+                var normalizedNameOrPath = PathHandling.NormalizeDirectorySeparators(nameOrPath.Name);
+                string name = null;
+                string[] resolvedPaths = null;
+
+                if (!ModuleIntrinsics.IsModuleNamePath(normalizedNameOrPath))
+                {
+                    // Name as it is, i.e., including wildcards.
+                    name = nameOrPath.Name;
+                }
+                else
+                {
+                    resolvedPaths = ResolveToFileSystemPaths(normalizedNameOrPath, Context).ToArray();
+                }
+
+                WriteVerbose($"Processing module specification with .Name: {nameOrPath.Name}.");
+
+                arguments.Add(new NameArgument
+                {
+                    ParameterName   /**/ = parameterName,
+                    Verbatim        /**/ = nameOrPath.Name,
+                    HasWildcards    /**/ = WildcardPattern.ContainsWildcardCharacters(normalizedNameOrPath),
+                    Name            /**/ = name,
+                    Paths           /**/ = resolvedPaths,
+                    IsPath          /**/ = name is null,
+                    Guid            /**/ = nameOrPath.Guid,
+                    Version         /**/ = nameOrPath.Version,
+                    RequiredVersion /**/ = nameOrPath.RequiredVersion,
+                    MaximumVersion  /**/ = nameOrPath.MaximumVersion,
+                });
+            }
+
+            return arguments;
+        }
+
         private void AssertNameDoesNotResolveToAPath(string[] names, string stringFormat, string resourceId)
         {
             if (names != null)
