@@ -9,6 +9,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Management.Automation;
+using System.Management.Automation.engine.Modules;
 using System.Management.Automation.Internal;
 using System.Management.Automation.Language;
 using System.Management.Automation.Runspaces;
@@ -365,12 +366,10 @@ namespace Microsoft.PowerShell.Commands
             var moduleSpecTable = new Dictionary<string, ModuleSpecification>(StringComparer.OrdinalIgnoreCase);
             if (FullyQualifiedName != null)
             {
-                for (int modSpecIndex = 0; modSpecIndex < FullyQualifiedName.Length; modSpecIndex++)
-                {
-                    FullyQualifiedName[modSpecIndex] = FullyQualifiedName[modSpecIndex].WithNormalizedName(Context, SessionState.Path.CurrentLocation.Path);
-                }
-
-                moduleSpecTable = FullyQualifiedName.ToDictionary(static moduleSpecification => moduleSpecification.Name, StringComparer.OrdinalIgnoreCase);
+                moduleSpecTable = FullyQualifiedName.ToDictionary(
+                    keySelector: static moduleSpecification => moduleSpecification.Name,
+                    elementSelector: moduleSpecification => moduleSpecification.WithNormalizedName(Context, SessionState.Path.CurrentLocation.Path),
+                    comparer: StringComparer.OrdinalIgnoreCase);
                 strNames.AddRange(FullyQualifiedName.Select(static spec => spec.Name));
             }
 
@@ -387,7 +386,10 @@ namespace Microsoft.PowerShell.Commands
             {
                 if (ListAvailable.IsPresent)
                 {
-                    GetAvailableLocallyModules(names, moduleSpecTable, this.All);
+                    // We're processing path-like argument values.
+                    IReadOnlyCollection<NameArgument> nameArguments = BuildNameArguments();
+
+                    GetAvailableLocallyModules(nameArguments, moduleSpecTable, this.All);
                 }
                 else
                 {
@@ -517,9 +519,9 @@ namespace Microsoft.PowerShell.Commands
             }
         }
 
-        private void GetAvailableLocallyModules(string[] names, IDictionary<string, ModuleSpecification> moduleSpecTable, bool all)
+        private void GetAvailableLocallyModules(IReadOnlyCollection<NameArgument> nameArguments, IDictionary<string, ModuleSpecification> moduleSpecTable, bool all)
         {
-            IEnumerable<PSModuleInfo> modules = GetModule(names, all, Refresh);
+            IEnumerable<PSModuleInfo> modules = GetModule(nameArguments, all, Refresh);
             foreach (PSModuleInfo module in FilterModulesForEditionAndSpecification(modules, moduleSpecTable))
             {
                 var psModule = new PSObject(module);
