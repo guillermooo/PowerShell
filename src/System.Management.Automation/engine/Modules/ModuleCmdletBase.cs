@@ -24,6 +24,7 @@ using System.Diagnostics;
 using Microsoft.PowerShell.Cmdletization;
 
 using Dbg = System.Management.Automation.Diagnostics;
+using System.Management.Automation.engine.Modules;
 
 //
 // Now define the set of commands for manipulating modules.
@@ -1014,6 +1015,142 @@ namespace Microsoft.PowerShell.Commands
             }
 
             return modulesToReturn;
+        }
+
+        internal List<PSModuleInfo> GetModule(IReadOnlyCollection<NameArgument> nameArguments, bool all, bool refresh)
+        {
+            ArgumentNullException.ThrowIfNull(nameArguments);
+
+            List<PSModuleInfo> modulesToReturn = [];
+            List<NameArgument> modulePaths = [];
+            List<string> moduleNames = [];
+
+            foreach (var nameArgument in nameArguments)
+            {
+                if (nameArgument.IsPath)
+                {
+                    modulePaths.Add(nameArgument);
+                }
+                else
+                {
+                    moduleNames.Add(nameArgument.Name);
+                }
+            }
+
+            modulesToReturn.AddRange(GetModuleFromFileSystem(modulePaths, all, refresh));
+
+            if (modulePaths.Count == 0 || moduleNames.Count > 0)
+            {
+                modulesToReturn.AddRange(GetModuleForNames(moduleNames, all, refresh));
+            }
+
+            return modulesToReturn;
+        }
+
+        private IEnumerable<PSModuleInfo> GetModuleFromFileSystem(List<NameArgument> nameArguments, bool all, bool refresh)
+        {
+            // This is to filter out duplicate modules
+            var seenModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (NameArgument nameArgument in nameArguments)
+            {
+                if (nameArgument.Paths.Count == 1)
+                {
+                    foreach (string path in nameArgument.Paths)
+                    {
+                        string moduleName = Path.GetFileName(path);
+
+                        // If the given path is a valid module file, we will load the specific file
+                        if (!Directory.Exists(path) && ModuleIntrinsics.IsPowerShellModuleExtension(Path.GetExtension(moduleName)))
+                        {
+                            if (File.Exists(path))
+                            {
+                                PSModuleInfo module = CreateModuleInfoForGetModule(path, refresh);
+
+                                // TODO: What does it mean when module == null.
+                                if (module is not null && seenModules.Add(path))
+                                {
+                                    yield return module;
+                                }
+                                else if (module is null)
+                                {
+                                    WriteWarning($"Could not obtain module information for module '{path}'.");
+                                }
+                            }
+                            else if (!nameArgument.HasWildcards)
+                            {
+                                WriteVerbose(
+                                    $"The module file '{path}' resolved from the argument '{nameArgument.Verbatim}' " +
+                                    $"to the parameter {nameArgument.ParameterName} does not exist.");
+                                WriteError(CreateModuleNotFoundError(nameArgument.Verbatim));
+                            }
+                            else
+                            {
+                                WriteVerbose($"The argument '{nameArgument.Verbatim}' to the parameter {nameArgument.ParameterName} did not resolve to any module.");
+                            }
+                        }
+                        else
+                        {
+                            // Given path is a directory, we first check if it is end with module version.
+                            if (Version.TryParse(moduleName, out var _))
+                            {
+                                moduleName = Path.GetFileName(Directory.GetParent(path).Name);
+                            }
+
+                            var availableModuleFiles = all
+                                ? ModuleUtils.GetAllAvailableModuleFiles(path)
+                                : ModuleUtils.GetModuleFilesFromAbsolutePath(path);
+
+                            bool foundModule = false;
+                            foreach (string file in availableModuleFiles)
+                            {
+                                PSModuleInfo module = CreateModuleInfoForGetModule(file, refresh);
+                                if (module != null)
+                                {
+                                    if (string.Equals(moduleName, module.Name, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        foundModule = true;
+                                        // We need to list all versions of the module.
+                                        string subModulePath = Path.GetDirectoryName(file);
+                                        if (seenModules.Add(subModulePath))
+                                        {
+                                            yield return module;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Write error only if Name has no wild cards
+                            if (!foundModule && !nameArgument.HasWildcards)
+                            {
+                                WriteError(CreateModuleNotFoundError(path));
+                            }
+                        }
+                    }
+                }
+                else if (nameArgument.Paths.Count > 1)
+                {
+                    // TODO: This is strange. We should be able to support multiple paths? At the moment, multiple paths
+                    //       follow the path to loading the modules, but nothing is returned. A single path works.
+                    //
+                    // We only support getting one module at a time from each path argument to -Name or -FullyQualifiedName.
+                    // Let the user know.
+                    throw InterpreterError.NewInterpreterException(
+                        nameArgument.Paths,
+                        typeof(RuntimeException),
+                        errorPosition: null,
+                        "AmbiguousPath",
+                        ParserStrings.AmbiguousPath);
+                }
+                else if (!nameArgument.HasWildcards)
+                {
+                    WriteError(CreateModuleNotFoundError(nameArgument.Verbatim));
+                }
+                else
+                {
+                    WriteVerbose($"The argument '{nameArgument.Verbatim}' to the parameter {nameArgument.ParameterName} did not resolve to any module.");
+                }
+            }
         }
 
         private IEnumerable<PSModuleInfo> GetModuleForRootedPaths(List<string> modulePaths, bool all, bool refresh)
